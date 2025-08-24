@@ -1,0 +1,1587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>KPK Flood Emergency – Rapid Response Hub (Pro)</title>
+  <meta name="description" content="One-tap hotlines • district quick-call • GPS sharing • live rain forecast • radar map • siren • WhatsApp complaints • PWA-ready" />
+  <meta name="theme-color" content="#0B5D1E" />
+
+  <!-- Manifest inline for single-file PWA -->
+  <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:&quot;KPK Flood Emergency&quot;,&quot;short_name&quot;:&quot;KPK Emergency&quot;,&quot;start_url&quot;:&quot;.&quot;,&quot;display&quot;:&quot;standalone&quot;,&quot;background_color&quot;:&quot;#ffffff&quot;,&quot;theme_color&quot;:&quot;#0B5D1E&quot;}">
+
+  <!-- Leaflet + Chart.js -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin>
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root{
+      --pk-green:#01411C; --pk-green-2:#0B5D1E; --pk-white:#ffffff; --accent:#49C26F;
+      --danger:#b91c1c; --warning:#b45309; --ok:#065f46; --shadow:0 10px 25px rgba(0,0,0,.15); --radius:18px;
+      --bg:#f6faf7; --text:#0b1b12;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,"Noto Sans",sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+    header{position:sticky;top:0;z-index:120;background:linear-gradient(135deg,var(--pk-green),#0e7a2b);color:var(--pk-white);padding:18px 14px;box-shadow:var(--shadow)}
+    .wrap{max-width:1200px;margin:0 auto;padding:14px}
+    .brand{display:flex;align-items:center;gap:14px}
+    .flag{width:46px;height:46px;border-radius:50%;background:radial-gradient(circle at 65% 50%, var(--pk-white) 0 33%, transparent 34%), var(--pk-green);position:relative;box-shadow:inset 0 0 0 3px rgba(255,255,255,.25)}
+    .flag:after{content:"";position:absolute;left:9px;top:11px;width:8px;height:8px;border-radius:50%;background:var(--pk-white);transform:rotate(-25deg)}
+    h1{margin:0;font-size:clamp(20px,2.4vw,28px)} .sub{opacity:.95;margin-top:2px;font-size:13px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px}
+    .card{background:var(--pk-white);border-radius:var(--radius);box-shadow:var(--shadow);padding:14px}
+    .card h2{margin:0 0 10px 0;font-size:18px;color:var(--pk-green)}
+    .hotline{display:grid;grid-template-columns:56px 1fr auto;align-items:center;gap:12px;padding:12px;border-radius:16px;border:1px solid #e3efe7;background:#fbfffc}
+    .hotline .icon{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:#e9f7ee;font-size:22px}
+    .hotline strong{font-size:17px}
+    .hotline a.btn{appearance:none;text-decoration:none;background:var(--pk-green-2);color:#fff;padding:10px 14px;border-radius:12px;font-weight:700;box-shadow:0 6px 16px rgba(1,65,28,.3)}
+    .hotline small{display:block;color:#355d43}
+    .row{display:flex;flex-wrap:wrap;gap:10px}
+    .pill{padding:10px 12px;border-radius:999px;background:#e6f5ea;border:1px solid #c7e7d2;color:#064e3b;font-weight:600}
+    .cta{display:grid;gap:10px}
+    .cta a,.cta button{display:inline-flex;align-items:center;gap:8px;padding:12px 14px;border-radius:12px;text-decoration:none;font-weight:700;box-shadow:var(--shadow)}
+    .cta a.call{background:#0b7a2c;color:#fff}
+    .cta a.whatsapp{background:#e8f7ee;color:#064e3b}
+    .cta a.sms{background:#f2fbf5;color:#0b3b1e}
+    .status{display:flex;align-items:center;gap:8px}
+    .dot{width:10px;height:10px;border-radius:50%;background:#22c55e;box-shadow:0 0 0 6px rgba(34,197,94,.15)}
+    .feed{display:grid;gap:10px;max-height:360px;overflow:auto}
+    .item{border-left:6px solid var(--accent);padding:10px 12px;background:#ffffff;border-radius:12px;box-shadow:0 6px 16px rgba(0,0,0,.07)}
+    .item .time{font-size:12px;color:#355d43}
+    .sev{font-size:12px;font-weight:800;padding:4px 8px;border-radius:8px}
+    .sev.high{background:#fde68a;color:#7c2d12}
+    .sev.critical{background:#fecaca;color:#7f1d1d}
+    .sev.medium{background:#dcfce7;color:#065f46}
+    .footer{margin:24px 0 60px;color:#355d43;font-size:12px}
+    .form-grid{display:grid;gap:10px}
+    input, select, textarea{width:100%;padding:10px;border:1px solid #cde7d5;border-radius:12px;background:#fbfffc}
+    button{padding:12px 16px;border-radius:12px;border:none;font-weight:800;cursor:pointer;background:var(--pk-green);color:#fff;box-shadow:0 6px 16px rgba(1,65,28,.3)}
+    button.secondary{background:#e8f7ee;color:#064e3b}
+    .map-link{display:inline-block;margin-top:6px;font-size:12px;color:#064e3b}
+    .dq-row{display:flex;flex-wrap:wrap;gap:8px}
+    .dq-btn{background:#0b7a2c;color:#fff;border-radius:12px;padding:10px 12px;text-decoration:none;font-weight:800;box-shadow:var(--shadow)}
+    .dq-btn.secondary{background:#e8f7ee;color:#064e3b}
+    .dq-missing{font-size:12px;color:#7a8f82}
+    .mini{font-size:12px;color:#355d43}
+    .badge{display:inline-block;padding:4px 8px;border-radius:999px;font-weight:800;font-size:12px}
+    .badge.low{background:#dcfce7;color:#065f46}
+    .badge.med{background:#fde68a;color:#7c2d12}
+    .badge.high{background:#fecaca;color:#7f1d1d}
+    .thumb{max-width:100%;height:auto;border-radius:10px;margin-top:8px;border:1px solid #e4efe8}
+    .two-col{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+    .soft{background:#f1fbf4;border:1px dashed #bfe6cc;border-radius:12px;padding:10px}
+    .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace}
+    .muted{color:#557867;font-size:12px}
+    .stack{display:grid;gap:8px}
+    .banner{border-radius:14px;padding:10px 12px;background:#fff7ed;border:1px solid #fed7aa;color:#7c2d12;margin:10px 0}
+    .banner.critical{background:#fef2f2;border-color:#fecaca;color:#7f1d1d}
+    #map{width:100%;height:340px;border-radius:16px;box-shadow:var(--shadow)}
+    .fab{ position:fixed;bottom:18px;right:18px;z-index:210;display:flex;gap:10px;align-items:center }
+    .fab a{display:inline-flex;align-items:center;gap:8px;padding:12px 14px;border-radius:999px;text-decoration:none;font-weight:800;box-shadow:var(--shadow)}
+    .fab .wa{background:#25D366;color:#fff}
+    .fab .panic{background:#ef4444;color:#fff}
+    .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:86px;background:#0b7a2c;color:white;padding:10px 14px;border-radius:10px;box-shadow:var(--shadow);z-index:400;display:none}
+    .toast.show{display:block;animation:fade 1s ease-out}
+    @keyframes fade{from{opacity:0;transform:translateX(-50%) translateY(10px)} to{opacity:1;transform:translateX(-50%) translateY(0)}}
+    .gauge{display:flex;align-items:center;gap:12px}
+    .gauge .bar{height:14px;border-radius:999px;background:#e6f5ea;flex:1;position:relative}
+    .gauge .bar > i{position:absolute;left:0;top:0;bottom:0;border-radius:999px;background:linear-gradient(90deg,#49C26F,#F59E0B,#EF4444)}
+    .settings{display:flex;gap:10px;flex-wrap:wrap}
+    .evac-list{max-height:220px;overflow:auto}
+    .kbd{font-family:ui-monospace,monospace;background:#f3f4f6;border-radius:6px;padding:2px 6px}
+    .statusbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .critical-banner{background:#fff1f2;border:1px solid #fecaca;padding:10px;border-radius:12px;color:#7f1d1d}
+    @media (max-width:640px){
+      .hotline{grid-template-columns:48px 1fr}
+      .hotline a.btn{grid-column:1/-1;text-align:center}
+      .fab a{padding:12px}
+      .grid{gap:10px}
+    }
+    /* dark mode */
+    .dark{background:#02120a;color:#dbeeda}
+    .dark .card{background:#042012;color:#dbeeda}
+    .dark header{background:#062d17}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap brand">
+      <div class="flag" aria-hidden="true"></div>
+      <div style="flex:1">
+        <h1>KP Flood Emergency – Rapid Response Hub (Pro)</h1>
+        <div class="sub">One-tap dialing • district quick-call • share live location • live forecast • radar map • offline-ready</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="statusbar">
+          <div class="mini">Network: <span id="netStatus">—</span></div>
+          <div class="mini">Battery: <span id="topBattery">—</span></div>
+          <div class="mini">AutoFlush: <span id="autoFlushStatus">ON</span></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap" id="app" role="main">
+    <section class="banner" id="alertBanner" role="status" aria-live="polite" hidden></section>
+
+    <section class="card" aria-labelledby="hotlines">
+      <h2 id="hotlines">🚨 Priority Hotlines (Khyber Pakhtunkhwa & Pakistan)</h2>
+      <div class="row" style="margin-bottom:12px">
+        <span class="pill">پاکستانی جھنڈا رنگ تھیم</span>
+        <span class="pill">Green & White UI</span>
+        <span class="pill status"><span class="dot" id="live-dot"></span>Real-time feed ON</span>
+      </div>
+      <div class="grid" id="hotline-grid"><!-- Populated by JS --></div>
+      <div style="margin-top:10px;color:#355d43;font-size:13px">
+        If helicopters/army support is required, coordinate via PDMA 1700 or Rescue 1122. They escalate to aerial support when available.
+      </div>
+    </section>
+
+    <!-- District Quick-Call Panel -->
+    <section class="card" aria-labelledby="dq">
+      <h2 id="dq">📞 District Quick-Call (KPK)</h2>
+      <div class="row">
+        <label style="display:grid;gap:6px;min-width:220px">
+          <span>Choose District</span>
+          <select id="dqSelect" aria-label="Choose district"></select>
+        </label>
+        <label style="display:grid;gap:6px;min-width:220px">
+          <span>Search (English/Urdu/Pashto)</span>
+          <input id="dqSearch" placeholder="Type district e.g., Peshawar / پشاور" aria-label="Search district" />
+        </label>
+        <button class="secondary" id="dqUseGPS">Use my GPS</button>
+      </div>
+      <div class="dq-row" id="dqButtons" style="margin-top:10px" aria-live="polite"></div>
+      <div class="dq-missing" id="dqMissing" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="grid" style="margin-top:14px">
+      <div class="card" aria-labelledby="location">
+        <h2 id="location">📍 Share Your Live Location</h2>
+        <p>Send precise GPS to responders. This stays on your device unless you share it.</p>
+        <div class="cta" style="margin:10px 0">
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button id="getLocation">Get GPS Coordinates</button>
+            <button id="startWatch" class="secondary">Start Live Track</button>
+            <button id="stopWatch" class="secondary" disabled>Stop Live Track</button>
+            <button class="secondary" id="copyLocation">Copy Location Text</button>
+          </div>
+        </div>
+        <div id="locOut" class="soft mono" style="min-height:44px;white-space:pre-wrap"></div>
+        <a id="mapLink" class="map-link" href="#" target="_blank" rel="noopener">Open in Google Maps</a>
+        <div style="margin-top:8px" class="muted" id="reverseAddr">Address: —</div>
+        <div class="cta" style="margin-top:10px">
+          <a id="waShare" class="whatsapp" href="#" target="_blank" rel="noopener">Share via WhatsApp</a>
+          <a id="smsShare" class="sms" href="#">Share via SMS</a>
+        </div>
+        <div class="mini" style="margin-top:8px">Tracking status: <span id="trackStatus">idle</span> • Last update: <span id="trackTime">—</span></div>
+      </div>
+
+      <div class="card" aria-labelledby="report">
+        <h2 id="report">📝 Report an Incident</h2>
+        <form id="reportForm" class="form-grid">
+          <label>District (KPK)
+            <select name="district" id="districtSelect" required>
+              <option value="Peshawar">Peshawar</option>
+              <option value="Swat">Swat</option>
+              <option value="Charsadda">Charsadda</option>
+              <option value="Nowshera">Nowshera</option>
+              <option value="DI Khan">Dera Ismail Khan</option>
+              <option value="Chitral">Chitral</option>
+              <option value="Shangla">Shangla</option>
+              <option value="Upper Kohistan">Upper Kohistan</option>
+              <option value="Lower Kohistan">Lower Kohistan</option>
+              <option value="Battagram">Battagram</option>
+              <option value="Mansehra">Mansehra</option>
+              <option value="Buner">Buner</option>
+              <option value="Kurram">Kurram</option>
+              <option value="Tank">Tank</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+          <label>Type
+            <select name="type">
+              <option>Flood Water</option>
+              <option>Bridge Damage</option>
+              <option>People Trapped</option>
+              <option>Landslide</option>
+              <option>Medical Emergency</option>
+              <option>Power Outage</option>
+              <option>Road Block</option>
+            </select>
+          </label>
+          <label>Severity
+            <select name="severity">
+              <option>Medium</option>
+              <option>High</option>
+              <option>Critical</option>
+            </select>
+          </label>
+          <label>Description
+            <textarea name="desc" rows="3" placeholder="Short details: people count, landmarks, water level, etc."></textarea>
+          </label>
+          <div class="row">
+            <button type="submit">Submit to Community Feed</button>
+            <button type="button" class="secondary" id="clearFeed">Clear Local Feed</button>
+          </div>
+        </form>
+        <div style="margin-top:10px" class="mini">Tip: attach a photo in Advanced Tools to help responders.</div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="live">
+      <h2 id="live">📡 Live Community Incident Feed (Local & Offline-friendly)</h2>
+      <div id="feed" class="feed" aria-live="polite" aria-busy="false"></div>
+      <div class="footer">This feed stores reports in your browser (localStorage) and syncs across open tabs/windows. For official help, always call the hotlines above.</div>
+    </section>
+
+    <!-- Donation / Contribution -->
+    <section class="card" aria-labelledby="donate">
+      <h2 id="donate">🤝 Contribute for Flood Relief (Al Khidmat)</h2>
+      <div class="stack">
+        <p>Support flood-affected families through <strong>Al Khidmat Foundation</strong>. Please verify details from official sources.</p>
+        <div class="soft">
+          <div><b>Account Title:</b> <span id="accTitle">Al Khidmat Foundation</span></div>
+          <div><b>Bank:</b> <span id="accBank">Meezan Bank</span></div>
+          <div><b>Account No:</b> <span id="accNo" class="mono">01234567890123</span></div>
+          <div><b>IBAN:</b> <span id="accIBAN" class="mono">PK12MEZN00001234567890123</span></div>
+        </div>
+        <div class="row">
+          <button id="copyAcc">📋 Copy Account</button>
+          <button class="secondary" id="shareAcc">📤 Share</button>
+        </div>
+        <div id="accMsg" class="muted" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="radar">
+      <h2 id="radar">🛰️ Live Radar & Map</h2>
+      <div class="mini">Uses Leaflet + RainViewer tiles to visualize precipitation near your district/GPS.</div>
+      <div style="display:flex;gap:8px;align-items:center;margin:10px 0">
+        <label class="mini">Radar opacity <input id="radarOpacity" type="range" min="0" max="100" value="70" step="1" style="vertical-align:middle"></label>
+        <button id="refreshRadar" class="secondary">Refresh Radar</button>
+        <button id="copyMapLink" class="secondary">Copy Map Short Link</button>
+      </div>
+      <div id="map" role="application" aria-label="Precipitation radar map"></div>
+      <div id="mapLegend" class="mini" style="margin-top:8px">Radar: RainViewer nowcast overlay. Use district select to center.</div>
+    </section>
+
+    <section class="card" aria-labelledby="forecastCardHeader">
+      <h2 id="forecastCardHeader">🌧️ 24-Hour Rain Forecast</h2>
+      <div id="forecastInfo" class="muted">Select a district or use your GPS to load forecast.</div>
+      <canvas id="rainChart" style="max-width:100%;height:220px"></canvas>
+    </section>
+
+    <section class="card" aria-labelledby="evac">
+      <h2 id="evac">🏚️ Evacuation Centers & Resources</h2>
+      <div class="two-col">
+        <div>
+          <div class="mini">Nearest evacuation centers are shown on the map and listed below.</div>
+          <div class="evac-list" id="evacList" style="margin-top:8px"></div>
+        </div>
+        <div>
+          <div class="mini">Flood Gauge</div>
+          <div class="gauge" style="margin-top:8px">
+            <div class="bar" aria-hidden="true"><i id="gaugeBar" style="width:5%"></i></div>
+            <div class="mini" id="gaugeLabel">Risk: LOW</div>
+          </div>
+          <div style="margin-top:8px" class="mini">Auto-SOS: <span id="autoSosStatus">OFF</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="adv">
+      <h2 id="adv">🧭 Advanced Flood Tools (KPK)</h2>
+      <div class="two-col">
+        <div>
+          <h3 style="margin:6px 0">Flood Risk (beta)</h3>
+          <div class="mini">Nearest major river + short-term rain nowcast.</div>
+          <div class="row" style="margin:8px 0">
+            <button id="advUseGPS" class="secondary">Use my GPS</button>
+            <button id="advUseDistrict" class="secondary">Use district center</button>
+            <button id="advRecalc" class="secondary">Recalculate Risk</button>
+          </div>
+          <div id="riskRow" class="mini">No data yet. Tap a button above.</div>
+        </div>
+        <div>
+          <h3 style="margin:6px 0">Quick SOS Composer</h3>
+          <div class="mini">Compact message for low-signal areas.</div>
+          <div class="row" style="margin:8px 0">
+            <input id="sosPeople" type="number" min="1" placeholder="People count" style="flex:1;min-width:120px;padding:8px;border:1px solid #cde7d5;border-radius:10px;background:#fbfffc">
+            <select id="sosSeverity" style="flex:1;min-width:120px;padding:8px;border:1px solid #cde7d5;border-radius:10px;background:#fbfffc"><option>Medium</option><option>High</option><option>Critical</option></select>
+          </div>
+          <div class="row">
+            <a id="sosWA" class="dq-btn" href="#" target="_blank" rel="noopener">Send WhatsApp</a>
+            <a id="sosSMS" class="dq-btn secondary" href="#">Send SMS</a>
+          </div>
+          <div id="batteryInfo" class="mini" style="margin-top:6px">Battery: —</div>
+        </div>
+      </div>
+
+      <hr style="border:none;border-top:1px solid #e6efe8;margin:12px 0">
+
+      <div class="two-col">
+        <div>
+          <h3 style="margin:6px 0">Attach Photo to Reports</h3>
+          <div class="mini">Photo stays on this device (local). Helps responders identify location.</div>
+          <input id="photoInput" type="file" accept="image/*" capture="environment" style="margin-top:6px">
+        </div>
+        <div>
+          <h3 style="margin:6px 0">Backup Feed</h3>
+          <div class="row">
+            <button id="exportFeed" class="secondary">Export JSON</button>
+            <button id="exportCsv" class="secondary">Export CSV</button>
+            <label class="dq-btn secondary" style="cursor:pointer">Import JSON<input id="importFeed" type="file" accept="application/json" style="display:none"></label>
+          </div>
+          <div class="mini" id="backupMsg"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="sosTools">
+      <h2 id="sosTools">🆘 SOS Tools</h2>
+      <div class="row">
+        <button id="torchBtn" class="secondary">🔦 Flashlight</button>
+        <button id="sirenBtn" class="secondary">📢 Siren</button>
+        <button id="blinkBtn" class="secondary">✨ Screen Blink</button>
+        <button id="panicBtnBig" class="secondary">🚨 Panic (Big)</button>
+      </div>
+      <div class="mini" id="torchInfoNode"></div>
+    </section>
+
+    <section class="card" aria-labelledby="notif">
+      <h2 id="notif">🔔 Notifications & Settings</h2>
+      <div class="settings">
+        <div><button id="notifToggle" class="secondary">Enable Notifications</button></div>
+        <div><label class="mini">Dark mode <input type="checkbox" id="darkToggle"></label></div>
+        <div><label class="mini">Auto-flush outbox <input type="checkbox" id="autoFlush" checked></label></div>
+        <div><label class="mini">Auto-SOS on HIGH risk <input type="checkbox" id="autoSos"></label></div>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="info">
+      <h2 id="info">ℹ️ Tips</h2>
+      <ul>
+        <li>Keep your phone charged; carry a power bank if possible.</li>
+        <li>Move to higher ground; avoid crossing flowing water.</li>
+        <li>When calling, share <strong>district, landmark & GPS</strong> for faster dispatch.</li>
+      </ul>
+    </section>
+  </main>
+
+  <!-- Floating actions: WhatsApp + Panic -->
+  <div class="fab" aria-label="Quick Actions">
+    <a class="wa" id="fabWA" href="https://wa.me/923250075364?text=Hello%20Ali%20Haider%2C%20I%20want%20to%20report%20an%20emergency." target="_blank" rel="noopener">📲 WhatsApp Admin</a>
+    <a class="panic" href="#" id="panicBtn">🚨 Panic</a>
+  </div>
+
+  <!-- Tiny toast -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- Siren fallback audio -->
+  <audio id="sirenSound" preload="auto" loop>
+    <source src="https://actions.google.com/sounds/v1/alarms/alarm_clock.ogg" type="audio/ogg">
+    <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+  </audio>
+
+  <script>
+    /* ===========================================================
+       Config + Constants
+       ============================================================ */
+    const OWM_KEY = window.OWM_KEY || 'YOUR_OPENWEATHERMAP_KEY_HERE';
+    const SERVER_ENDPOINT = window.SERVER_ENDPOINT || 'http://localhost:5000/submit-report';
+    const FEED_KEY = 'kpk_emergency_feed_v3';
+    const OUTBOX_KEY = 'kpk_emergency_outbox_v2';
+    const EVAC_KEY = 'kpk_emergency_evac_v1'; // evacuation centers store
+    window.RAINVIEWER_LAYER = window.RAINVIEWER_LAYER || 'https://tilecache.rainviewer.com/v2/radar/nowcast_0/512/{z}/{x}/{y}/1/1_1.png';
+
+    /* =========================
+       Helpers & UI utilities
+       ========================= */
+    function el(id){ return document.getElementById(id); }
+    function showToast(text, ms=2200){ const t=el('toast'); t.textContent=text; t.classList.add('show'); clearTimeout(showToast._t); showToast._t=setTimeout(()=>t.classList.remove('show'), ms); }
+    function safeJSONParse(s){ try{ return JSON.parse(s); }catch(e){ return null; } }
+    function now(){ return Date.now(); }
+    function clamp(v,a,b){ return Math.max(a,Math.min(b,v)); }
+    function fmtDate(ts){ return new Date(ts).toLocaleString(); }
+    function isOnline(){ return navigator.onLine; }
+
+    // network/battery status updates
+    function updateNetStatus(){ el('netStatus').textContent = navigator.onLine ? 'online' : 'offline'; }
+    async function updateBatteryUI(){ try{ const b = await navigator.getBattery?.(); if(!b) { el('topBattery').textContent='—'; return; } const txt = `${Math.round(b.level*100)}% ${b.charging? '(charging)':''}`; el('topBattery').textContent = txt; } catch(e) { el('topBattery').textContent='—'; } }
+    window.addEventListener('online', ()=>{ updateNetStatus(); tryFlushOutbox(); });
+    window.addEventListener('offline', ()=>{ updateNetStatus(); });
+
+    /* ===========================================================
+       HOTLINES + DISTRICTS (original + extended)
+       ============================================================ */
+    const HOTLINES = [
+      { name: "Rescue 1122 (Ambulance, Fire, Rescue)", number: "1122", note: "Dialable across Pakistan", icon: "🚑" },
+      { name: "Police (Madadgar 15)", number: "15", note: "National police helpline", icon: "🚓" },
+      { name: "PDMA Khyber Pakhtunkhwa – Emergency Helpline", number: "1700", note: "Provincial Disaster Management Authority (24/7)", icon: "🛰️" },
+      { name: "KPK Food Department (HQ)", number: "+92-91-9225373", note: "HQ contact (Peshawar)", icon: "🥖" },
+      { name: "KP Food Safety & Halal Food Authority", number: "+92-91-9212959", note: "Food safety complaints", icon: "✅" },
+    ];
+
+    const hotlineGrid = el('hotline-grid');
+    HOTLINES.forEach(h => {
+      const div = document.createElement('div');
+      div.className = 'hotline';
+      div.innerHTML = `
+        <div class="icon" aria-hidden="true">${h.icon}</div>
+        <div><strong>${h.name}</strong><small>${h.note}</small></div>
+        <a class="btn" href="tel:${h.number.replaceAll(' ', '')}">Call ${h.number}</a>`;
+      hotlineGrid.appendChild(div);
+    });
+
+    // DISTRICTS base (same as you provided)
+    const DISTRICTS = [
+      { name:'Peshawar', urdu:'پشاور', pashto:'پيښور', center:{lat:34.0151,lng:71.5249}, contacts:{ controlRoom:'', rescue:'1122', police:'15', pdma:'1700', foodDept:'+92-91-9225373' } },
+      { name:'Swat', urdu:'سوات', pashto:'سوات', center:{lat:34.7717,lng:72.3620}, contacts:{ controlRoom:'', rescue:'1122', police:'15', pdma:'1700' } },
+      { name:'Charsadda', urdu:'چارسدہ', pashto:'چارسده', center:{lat:34.1453,lng:71.7308}, contacts:{ controlRoom:'', rescue:'1122', police:'15', pdma:'1700' } },
+      { name:'Nowshera', urdu:'نوشہرہ', pashto:'نوشہرہ', center:{lat:34.0150,lng:71.9744}, contacts:{ controlRoom:'', rescue:'1122', police:'15', pdma:'1700' } },
+      { name:'Dera Ismail Khan', urdu:'ڈیرہ اسماعیل خان', pashto:'ډيره اسماعيل خان', center:{lat:31.8320,lng:70.9024}, contacts:{ controlRoom:'', rescue:'1122', police:'15', pdma:'1700' } },
+      { name:'Chitral', urdu:'چترال', pashto:'چترال', center:{lat:35.8510,lng:71.7864}, contacts:{ controlRoom:'', rescue:'1122', police:'15', pdma:'1700' } },
+      { name:'Shangla', urdu:'شانگلہ', pashto:'شانگله', center:{lat:34.9087,lng:72.1276}, contacts:{ controlRoom:'', rescue:'1122', police:'15', pdma:'1700' } },
+      { name:'Upper Kohistan', urdu:'اپر کوہستان', pashto:'بر کوهستان', center:{lat:35.38,lng:73.30}, contacts:{ controlRoom:'', rescue:'1122', police:'15', pdma:'1700' } },
+      { name:'Lower Kohistan', urdu:'لوئر کوہستان', pashto:'کوهستان ښکته', center:{lat:35.33,lng:73.10}, contacts:{ controlRoom:'', rescue:'1122', police:'15', pdma:'1700' } },
+      { name:'Battagram', urdu:'بٹگرام', pashto:'بټګرام', center:{lat:34.68,lng:73.03}, contacts:{ controlRoom:'', rescue:'1122', police:'15', pdma:'1700' } },
+      { name:'Mansehra', urdu:'مانسہرہ', pashto:'مانسهره', center:{lat:34.33,lng:73.20}, contacts:{ controlRoom:'', rescue:'1122', police:'15', pdma:'1700' } },
+      { name:'Buner', urdu:'بونیر', pashto:'بونير', center:{lat:34.40,lng:72.48}, contacts:{ controlRoom:'', rescue:'1122', police:'15', pdma:'1700' } },
+      { name:'Kurram', urdu:'کرّم', pashto:'کرم', center:{lat:33.70,lng:70.10}, contacts:{ controlRoom:'', rescue:'1122', police:'15', pdma:'1700' } },
+      { name:'Tank', urdu:'ٹانک', pashto:'ټانک', center:{lat:32.22,lng:70.38}, contacts:{ controlRoom:'', rescue:'1122', police:'15', pdma:'1700' } },
+      { name:'Other', urdu:'دیگر', pashto:'نور', center:{lat:34.0,lng:71.5}, contacts:{ rescue:'1122', police:'15', pdma:'1700' } },
+    ];
+
+    // allow external district JSON override
+    async function maybeLoadExternalDistricts(){
+      try{
+        if(!window.DISTRICT_JSON_URL) return;
+        const r = await fetch(window.DISTRICT_JSON_URL); const j = await r.json();
+        if(Array.isArray(j) && j.length){ return j; }
+      }catch(e){ console.warn('External district JSON failed:', e?.message); }
+      return null;
+    }
+
+    const dqSelect = el('dqSelect');
+    const dqSearch = el('dqSearch');
+    const dqButtons = el('dqButtons');
+    const dqMissing = el('dqMissing');
+    const reportDistrictSelect = el('districtSelect');
+
+    function renderDQOptions(list){
+      dqSelect.innerHTML = list.map(d=>`<option value="${d.name}">${d.name} ${d.urdu?`/ ${d.urdu}`:''} ${d.pashto?`/ ${d.pashto}`:''}</option>`).join('');
+    }
+
+    function telBtn(label, number){
+      return `<a class="dq-btn" href="tel:${number}">${label}: ${number}</a>`;
+    }
+
+    function renderDQButtons(d){
+      dqButtons.innerHTML = '';
+      const c = d.contacts||{};
+      const rows = [];
+      if(c.controlRoom) rows.push(telBtn('Control Room', c.controlRoom));
+      if(c.rescue) rows.push(telBtn('Rescue 1122', c.rescue));
+      if(c.police) rows.push(telBtn('Police 15', c.police));
+      if(c.pdma) rows.push(telBtn('PDMA 1700', c.pdma));
+      if(c.foodDept) rows.push(telBtn('Food Dept', c.foodDept));
+      if(rows.length===0){ dqMissing.textContent = 'No district-specific numbers yet. Using national hotlines above.'; }
+      else { dqMissing.textContent = ''; }
+      dqButtons.innerHTML = rows.join('');
+    }
+
+    function findDistrictByName(name){
+      return (window.__DISTRICT_LIST__||DISTRICTS).find(d=>d.name.toLowerCase()===String(name||'').toLowerCase()) || (window.__DISTRICT_LIST__||DISTRICTS)[0];
+    }
+
+    async function initDistricts(){
+      const external = await maybeLoadExternalDistricts();
+      window.__DISTRICT_LIST__ = external || DISTRICTS;
+      renderDQOptions(window.__DISTRICT_LIST__);
+      dqSelect.value = window.__DISTRICT_LIST__[0].name;
+      updateFromSelect();
+      // pre-populate evacuation centers if not present
+      if(!localStorage.getItem(EVAC_KEY)){
+        const defaultEvac = [
+          { name:'Peshawar Model School (Evac Center)', lat:34.005, lng:71.545, district:'Peshawar', notes:'Open ground, capacity approx 200' },
+          { name:'Mingora Sports Complex Shelter', lat:34.774, lng:72.36, district:'Swat', notes:'Indoor hall' },
+          { name:'DI Khan Civic Center', lat:31.836, lng:70.90, district:'Dera Ismail Khan', notes:'Community hall' }
+        ];
+        localStorage.setItem(EVAC_KEY, JSON.stringify(defaultEvac));
+      }
+    }
+
+    function updateFromSelect(){
+      const d = findDistrictByName(dqSelect.value);
+      renderDQButtons(d);
+      if(d && reportDistrictSelect){ reportDistrictSelect.value = d.name; }
+      if(d?.center){ // refresh forecast and center map
+        refreshRainForecast(d.center.lat, d.center.lng, d.name+' District');
+        panTo(d.center.lat, d.center.lng);
+        loadOWMCurrent(d.center.lat, d.center.lng, d.name);
+      }
+      // refresh evac list to only show district relevant ones
+      renderEvacList(d.name);
+    }
+
+    function searchFilter(q){
+      const t = q.trim().toLowerCase();
+      const base = window.__DISTRICT_LIST__||DISTRICTS;
+      const filtered = base.filter(d=> [d.name, d.urdu, d.pashto].filter(Boolean).some(x=>String(x).toLowerCase().includes(t)));
+      renderDQOptions(filtered.length?filtered:base);
+      dqSelect.value = (filtered[0]||base[0]).name;
+      updateFromSelect();
+    }
+
+    function haversine(lat1, lon1, lat2, lon2){
+      const R=6371; const dLat=(lat2-lat1)*Math.PI/180; const dLon=(lon2-lon1)*Math.PI/180;
+      const a=Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+      return 2*R*Math.asin(Math.sqrt(a));
+    }
+
+    function nearestDistrict(lat, lng){
+      const list = window.__DISTRICT_LIST__||DISTRICTS;
+      let best=list[0], bestKm=1e9;
+      for(const d of list){
+        if(!d.center) continue;
+        const km = haversine(lat,lng,d.center.lat,d.center.lng);
+        if(km<bestKm){ bestKm=km; best=d; }
+      }
+      return { district: best, km: bestKm };
+    }
+
+    /* =========================
+       Live Location & WatchPosition
+       ========================= */
+    const locBtn = el('getLocation');
+    const copyBtn = el('copyLocation');
+    const locOut = el('locOut');
+    const mapLink = el('mapLink');
+    const waShare = el('waShare');
+    const smsShare = el('smsShare');
+    const startWatchBtn = el('startWatch');
+    const stopWatchBtn = el('stopWatch');
+    const trackStatus = el('trackStatus');
+    const trackTime = el('trackTime');
+    const reverseAddrNode = el('reverseAddr');
+
+    let lastCoords = null;
+    let watchId = null;
+
+    function buildShareText(lat, lng, accuracy){
+      return `Emergency location: ${lat.toFixed(5)}, ${lng.toFixed(5)} (±${Math.round(accuracy)}m)%0Ahttps://maps.google.com/?q=${lat},${lng}`;
+    }
+
+    function updateShareLinks(){
+      if(!lastCoords) return;
+      const {latitude, longitude, accuracy} = lastCoords;
+      const txt = buildShareText(latitude, longitude, accuracy);
+      waShare.href = `https://wa.me/?text=${txt}`;
+      smsShare.href = `sms:?&body=${decodeURIComponent(txt)}`;
+    }
+
+    function setLocOut(lat, lng, acc){
+      locOut.textContent = `Lat: ${lat.toFixed(6)}\nLng: ${lng.toFixed(6)}\nAccuracy: ±${Math.round(acc)} m`;
+      mapLink.href = `https://maps.google.com/?q=${lat},${lng}`;
+    }
+
+    async function reverseGeocode(lat, lng){
+      try{
+        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+        const r = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+        if(!r.ok) return null;
+        const j = await r.json();
+        return j;
+      }catch(e){ console.warn('Reverse geocode failed', e); return null; }
+    }
+
+    locBtn.addEventListener('click', () =>{
+      if(!('geolocation' in navigator)){
+        locOut.textContent = 'Geolocation not supported on this device.';
+        return;
+      }
+      locOut.textContent = 'Getting location… (allow permission)';
+      navigator.geolocation.getCurrentPosition(async pos =>{
+        const {latitude, longitude, accuracy} = pos.coords;
+        lastCoords = pos.coords;
+        setLocOut(latitude, longitude, accuracy);
+        updateShareLinks();
+        refreshRainForecast(latitude, longitude, 'Your GPS');
+        panTo(latitude, longitude);
+        loadOWMCurrent(latitude, longitude, 'Your GPS');
+        const near = nearestDistrict(latitude, longitude);
+        dqSelect.value = near.district.name; updateFromSelect();
+        if(reportDistrictSelect) reportDistrictSelect.value = near.district.name;
+
+        // reverse geocode (best-effort)
+        reverseAddrNode.textContent = 'Address: looking up…';
+        const ge = await reverseGeocode(latitude, longitude);
+        if(ge && (ge.display_name || ge.address)){
+          reverseAddrNode.textContent = 'Address: ' + (ge.display_name || JSON.stringify(ge.address));
+        } else {
+          reverseAddrNode.textContent = 'Address: unavailable';
+        }
+        trackTime.textContent = new Date().toLocaleString();
+      }, err =>{
+        locOut.textContent = `Location error: ${err.message}`;
+      }, {enableHighAccuracy:true, timeout: 15000, maximumAge: 0});
+    });
+
+    // WatchPosition: start/stop live tracking
+    startWatchBtn.addEventListener('click', ()=>{
+      if(!('geolocation' in navigator)){ alert('Geolocation not supported.'); return; }
+      if(watchId) { showToast('Already tracking'); return; }
+      watchId = navigator.geolocation.watchPosition(async pos=>{
+        lastCoords = pos.coords;
+        setLocOut(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy);
+        updateShareLinks();
+        // quick reverse geocode every few updates (throttle)
+        if(Math.random() < 0.22){ const ge = await reverseGeocode(pos.coords.latitude, pos.coords.longitude); if(ge) reverseAddrNode.textContent = 'Address: ' + (ge.display_name||'—'); }
+        trackStatus.textContent = 'tracking';
+        trackTime.textContent = new Date(pos.timestamp).toLocaleString();
+        refreshSmallRainPreview(pos.coords.latitude, pos.coords.longitude);
+        if(map && map.getZoom() < 11) map.setView([pos.coords.latitude, pos.coords.longitude], 10);
+      }, err => {
+        showToast('Tracking error: ' + err.message);
+      }, { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 });
+      startWatchBtn.disabled = true; stopWatchBtn.disabled = false;
+      showToast('Live tracking started');
+    });
+
+    stopWatchBtn.addEventListener('click', ()=>{
+      if(watchId){ navigator.geolocation.clearWatch(watchId); watchId = null; trackStatus.textContent = 'idle'; startWatchBtn.disabled = false; stopWatchBtn.disabled = true; showToast('Live tracking stopped'); }
+    });
+
+    // Copy location text
+    copyBtn.addEventListener('click', async () =>{
+      if(!lastCoords){ alert('Get your GPS first.'); return; }
+      const {latitude, longitude, accuracy} = lastCoords;
+      const text = `Lat: ${latitude}, Lng: ${longitude}, Accuracy: ±${Math.round(accuracy)}m`;
+      try{ await navigator.clipboard.writeText(text); showToast('Copied to clipboard'); }catch{ alert('Copy failed. Select and copy manually.'); }
+    });
+
+    /* =========================
+       COMMUNITY FEED (local/offline)
+       ========================= */
+    const feedEl = el('feed');
+
+    function loadFeed(){ try{ return JSON.parse(localStorage.getItem(FEED_KEY)) || []; }catch{ return []; } }
+    function saveFeed(items){ localStorage.setItem(FEED_KEY, JSON.stringify(items)); }
+
+    function timeAgo(ts){
+      const diff = Date.now() - ts; const mins = Math.floor(diff/60000);
+      if(mins < 1) return 'just now'; if(mins < 60) return `${mins} min ago`;
+      const hrs = Math.floor(mins/60); if(hrs < 24) return `${hrs} hr ago`;
+      const days = Math.floor(hrs/24); return `${days} day${days>1?'s':''} ago`;
+    }
+
+    function renderFeed(){
+      const items = loadFeed().sort((a,b)=>b.ts - a.ts);
+      feedEl.innerHTML = '';
+      items.slice(0,200).forEach(it =>{
+        const div = document.createElement('div'); div.className = 'item';
+        const severityLower = (it.severity||'Medium').toLowerCase();
+        const sevClass = severityLower==='critical' ? 'critical' : (severityLower==='high' ? 'high' : 'medium');
+        const photo = it.photo ? `<img src="${it.photo}" class="thumb" alt="Attached photo">` : '';
+        const coordsLink = it.coords ? `<a class="map-link" target="_blank" rel="noopener" href="https://maps.google.com/?q=${it.coords.lat},${it.coords.lng}">Open incident location</a>` : '';
+        div.innerHTML = `
+          <div class="row" style="justify-content:space-between;align-items:center">
+            <strong>${it.type||'Incident'} – <span style="color:#0b7a2c">${it.district||'Unknown'}</span></strong>
+            <span class="sev ${sevClass}">${it.severity||'Medium'}</span>
+          </div>
+          <div class="time">${fmtDate(it.ts)} • ${timeAgo(it.ts)}</div>
+          <div>${it.desc ? it.desc.replace(/</g,'&lt;') : ''}</div>
+          ${coordsLink}
+          ${photo}`;
+        feedEl.appendChild(div);
+      });
+    }
+
+    function seedWelcome(){
+      if(loadFeed().length) return;
+      const seed = [
+        {district:'Swat', type:'Flood Water', severity:'High', desc:'Overflow near Mingora; road partially blocked.', ts: Date.now()-1000*60*25},
+        {district:'Charsadda', type:'People Trapped', severity:'Critical', desc:'Families need evacuation near riverbank.', ts: Date.now()-1000*60*40},
+        {district:'Nowshera', type:'Bridge Damage', severity:'High', desc:'Cracks reported on small bridge, light vehicles only.', ts: Date.now()-1000*60*55}
+      ];
+      saveFeed(seed);
+    }
+
+    seedWelcome();
+    renderFeed();
+
+    window.addEventListener('storage', (e)=>{ if(e.key === FEED_KEY) renderFeed(); });
+
+    setInterval(()=>{ const dot = el('live-dot'); dot.style.boxShadow = dot.style.boxShadow ? '' : '0 0 0 10px rgba(34,197,94,.1)'; }, 1200);
+
+    /* =========================
+       Outbox with exponential backoff
+       ========================= */
+    function loadOutbox(){ try{ return JSON.parse(localStorage.getItem(OUTBOX_KEY))||[]; }catch{return []; } }
+    function saveOutbox(arr){ localStorage.setItem(OUTBOX_KEY, JSON.stringify(arr)); }
+
+    // Try to send queued items with backoff attempts
+    async function tryFlushOutbox(){
+      const queue = loadOutbox();
+      if(!queue.length) return;
+      for(let i=0;i<queue.length;i++){
+        const item = queue[i];
+        try{
+          const res = await fetch(SERVER_ENDPOINT, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(item) });
+          if(res.ok){
+            queue.splice(i,1); i--; saveOutbox(queue); showToast('Queued report sent to server');
+          } else {
+            // register attempt and maybe bump backoff
+            item.attempts = (item.attempts||0)+1;
+            item.lastError = `HTTP ${res.status}`;
+            saveOutbox(queue);
+            console.warn('Server error for outbox item', res.status);
+            // don't spin: wait for next interval
+          }
+        } catch(e){
+          item.attempts = (item.attempts||0)+1;
+          item.lastError = e.message;
+          saveOutbox(queue);
+          console.warn('Outbox flush failed', e);
+          break; // network down: break early
+        }
+      }
+    }
+
+    // Periodically attempt to flush outbox if online
+    setInterval(()=>{ if(isOnline()) tryFlushOutbox(); }, 30_000);
+    window.addEventListener('online', tryFlushOutbox);
+
+    // form submission + server queuing (preserve original behavior but with enhancements)
+    const form = el('reportForm');
+    const clearBtn = el('clearFeed');
+
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const fd = new FormData(form);
+      const item = {
+        district: fd.get('district'), type: fd.get('type'), severity: fd.get('severity'),
+        desc: (fd.get('desc')||'').toString().slice(0, 1200), ts: Date.now()
+      };
+      if(lastCoords){ item.coords = {lat:lastCoords.latitude, lng:lastCoords.longitude}; }
+
+      // attach photo if pending
+      if(pendingPhotoDataUrl) { item.photo = pendingPhotoDataUrl; pendingPhotoDataUrl = null; photoInput.value = ''; }
+
+      // Save locally (existing behavior)
+      const items = loadFeed(); items.push(item); saveFeed(items);
+      form.reset(); renderFeed();
+
+      // Send to server or queue
+      try {
+        const res = await fetch(SERVER_ENDPOINT, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item)
+        });
+        if(res.ok){ const json = await res.json().catch(()=>({})); alert('Report submitted locally and sent to admin. (Server: ' + (json.message || json.msg || 'ok') + ')'); }
+        else { const txt = await res.text().catch(()=>''); console.warn('Server error:', res.status, txt); alert('Report saved locally but server returned an error. Admin may not have been notified.'); }
+      } catch (err) {
+        // Network down: queue for retry with metadata
+        const out = loadOutbox();
+        out.push(Object.assign({queuedAt:Date.now(), attempts:0}, item));
+        saveOutbox(out);
+        console.warn('Failed to reach server, queued for retry:', err);
+        alert('Report saved locally. Network issue — admin will be notified when connection returns.');
+      }
+    });
+
+    clearBtn.addEventListener('click', ()=>{ if(confirm('This will clear your local feed on this device. Continue?')){ saveFeed([]); renderFeed(); } });
+
+    /* =========================
+       PWA Service Worker (improved)
+       ========================= */
+    if('serviceWorker' in navigator){
+      const swCode = `
+      const CACHE_NAME = 'kpk-emerg-v4';
+      const OFFLINE_URL = './';
+      const ASSETS = [
+        './',
+      ];
+      self.addEventListener('install', e=>{
+        self.skipWaiting();
+        e.waitUntil(caches.open(CACHE_NAME).then(c=>c.addAll(ASSETS)).catch(()=>{}));
+      });
+      self.addEventListener('activate', e=>{
+        e.waitUntil(clients.claim());
+      });
+      self.addEventListener('fetch', e=>{
+        // network-first for API calls, cache-first for assets
+        const url = new URL(e.request.url);
+        if(url.pathname.includes('/api/') || url.hostname.includes('open-meteo') || url.hostname.includes('tilecache.rainviewer.com')){
+          e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));
+        } else {
+          e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request)));
+        }
+      });
+      `;
+      const blob = new Blob([swCode], {type:'text/javascript'});
+      const url = URL.createObjectURL(blob);
+      navigator.serviceWorker.register(url).catch(()=>{});
+    }
+
+    /* ===========================================================
+       ADVANCED FLOOD MODULE (Risk + SOS + Photo + Backup + CSV)
+       ============================================================ */
+    (function AdvancedFloodModule(){
+      const app = el('app');
+
+      /* Rivers (coarse waypoints) */
+      const RIVERS = [
+        { name:'Kabul River – Nowshera', lat:34.009, lng:71.98 },
+        { name:'Swat River – Mingora', lat:34.775, lng:72.362 },
+        { name:'Indus – DI Khan', lat:31.834, lng:70.896 },
+        { name:'Chitral River – Chitral', lat:35.851, lng:71.787 },
+        { name:'Panjkora – Upper Dir (approx.)', lat:35.335, lng:71.875 }
+      ];
+      function nearestRiver(lat,lng){ let best=null, bestKm=1e9; for(const r of RIVERS){ const km = haversine(lat,lng,r.lat,r.lng); if(km<bestKm){ bestKm=km; best=r; } } return {river:best, km:bestKm}; }
+
+      /* Rain Nowcast (Open-Meteo) */
+      async function fetchRain(lat,lng){
+        try{
+          const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=precipitation,precipitation_probability&forecast_days=1&timezone=auto`;
+          const res = await fetch(url); const j = await res.json();
+          const probs = (j.hourly?.precipitation_probability||[]).slice(0,6);
+          const precs = (j.hourly?.precipitation||[]).slice(0,6);
+          const avgProb = Math.round(probs.reduce((a,b)=>a+b,0)/Math.max(1,probs.length));
+          const sumRain = (precs.reduce((a,b)=>a+b,0)).toFixed(1);
+          return {avgProb, sumRain, raw:j};
+        }catch(e){ return {avgProb:null, sumRain:null}; }
+      }
+
+      // Enhanced risk scoring: distance to river + avgProb + historical weight
+      function riskScore(kmToRiver, avgProb){
+        let score = 0;
+        if(kmToRiver <= 0.5) score += 3;
+        else if(kmToRiver <= 1.5) score += 2;
+        else if(kmToRiver <= 4) score += 1;
+        // rain probability influence
+        if(avgProb >= 80) score += 3;
+        else if(avgProb >= 60) score += 2;
+        else if(avgProb >= 35) score += 1;
+        return clamp(score, 0, 6);
+      }
+      function riskLevelFromScore(score){ if(score >=5) return 'critical'; if(score>=3) return 'high'; if(score===2) return 'med'; return 'low'; }
+
+      const batteryInfo = el('batteryInfo');
+      async function updateBattery(){ try{ const b = await navigator.getBattery?.(); if(!b){ batteryInfo.textContent='Battery: —'; return; } const txt=()=>`Battery: ${Math.round(b.level*100)}% ${b.charging?'(charging)':''}`; batteryInfo.textContent=txt(); b.addEventListener('levelchange', ()=>batteryInfo.textContent=txt()); b.addEventListener('chargingchange', ()=>batteryInfo.textContent=txt()); }catch{ batteryInfo.textContent='Battery: —'; } }
+      updateBattery();
+
+      const sosWA = el('sosWA');
+      const sosSMS = el('sosSMS');
+      const sosPeople = el('sosPeople');
+      const sosSeverity = el('sosSeverity');
+      function buildSOS(lat,lng){
+        const d = el('districtSelect').value; const sev = sosSeverity.value; const ppl = sosPeople.value || ''; const battTxt = batteryInfo.textContent.replace('Battery: ',''); const locTxt = lat && lng ? `${lat.toFixed(5)}, ${lng.toFixed(5)}` : 'unknown';
+        const msg = `FLOOD SOS\nDistrict: ${d}\nSeverity: ${sev}\nPeople: ${ppl}\nGPS: ${locTxt}\nMap: https://maps.google.com/?q=${lat||''},${lng||''}\nBattery: ${battTxt}`;
+        return encodeURIComponent(msg);
+      }
+      function refreshSOS(lat,lng){
+        const enc = buildSOS(lat,lng); sosWA.href = `https://wa.me/?text=${enc}`; sosSMS.href = `sms:?&body=${enc}`;
+      }
+
+      const riskRow = el('riskRow');
+      async function computeAndShow(lat,lng, label){
+        riskRow.textContent = 'Calculating…';
+        const nearR = nearestRiver(lat,lng);
+        const rain = await fetchRain(lat,lng);
+        const score = riskScore(nearR.km, rain.avgProb ?? 0);
+        const level = riskLevelFromScore(score);
+        const badge = `<span class="badge ${level==='high'?'med':level}">${level.toUpperCase()} RISK</span>`;
+        const rainTxt = (rain.avgProb==null) ? 'No forecast (offline).' : `Rain (next 6h): ~${rain.avgProb}% chance, ~${rain.sumRain} mm`;
+        riskRow.innerHTML = `${badge} • Ref: ${label}<br>Nearest river: <b>${nearR.river.name}</b> at ~${nearR.km.toFixed(1)} km<br>${rainTxt}`;
+        // update gauge
+        const pct = Math.round((score/6)*100);
+        el('gaugeBar').style.width = pct+'%';
+        el('gaugeLabel').textContent = `Risk: ${level.toUpperCase()}`;
+        refreshSOS(lat,lng);
+        // if critical and autoSos enabled => queue/send
+        if(level === 'critical' && el('autoSos').checked){
+          autoTriggerSOS(lat,lng, level);
+        }
+        // update alert banner if critical
+        if(level === 'critical'){
+          showAlertBanner(`⚠️ ${label}: HIGH FLOOD RISK near ${nearR.river.name} (${nearR.km.toFixed(1)} km).`, true);
+        } else {
+          hideAlertBanner();
+        }
+        return {score, level, rain, nearR};
+      }
+
+      async function autoTriggerSOS(lat,lng, level){
+        // build a short message and queue it (so the user can review)
+        const msg = { auto: true, ts: Date.now(), level, coords:{lat,lng}, district: el('districtSelect').value, msg: decodeURIComponent(buildSOS(lat,lng)) };
+        // queue to outbox with special flag
+        const out = loadOutbox(); out.push(Object.assign({queuedAt: Date.now(), attempts:0, autoSOS:true}, msg)); saveOutbox(out);
+        showToast('Auto-SOS queued (outbox).');
+      }
+
+      // event handlers for adv use
+      el('advUseGPS').addEventListener('click', ()=>{
+        if(!('geolocation' in navigator)) return alert('Geolocation not supported.');
+        navigator.geolocation.getCurrentPosition(pos=>{ const {latitude, longitude} = pos.coords; lastCoords = pos.coords; computeAndShow(latitude, longitude, 'Your GPS'); panTo(latitude, longitude); }, err=> alert('Location error: '+err.message), { enableHighAccuracy:true, timeout:15000, maximumAge:0 });
+      });
+      el('advUseDistrict').addEventListener('click', ()=>{ const d = findDistrictByName(dqSelect.value); if(!d?.center){ riskRow.textContent = 'District center not available.'; return; } computeAndShow(d.center.lat, d.center.lng, d.name+' center'); panTo(d.center.lat, d.center.lng); });
+      el('advRecalc').addEventListener('click', ()=>{ const d = findDistrictByName(dqSelect.value); if(d?.center) computeAndShow(d.center.lat, d.center.lng, d.name+' center'); else showToast('No district center'); });
+
+      /* Photo input handling */
+      const photoInput = el('photoInput'); let pendingPhotoDataUrl = null;
+      photoInput?.addEventListener('change', ()=>{ const f = photoInput.files?.[0]; if(!f) { pendingPhotoDataUrl = null; return; } const reader = new FileReader(); reader.onload = ()=>{ pendingPhotoDataUrl = reader.result; }; reader.readAsDataURL(f); });
+
+      // attach photo to last feed item (if any) on submit (keeping original behavior)
+      form.addEventListener('submit', ()=>{ if(!pendingPhotoDataUrl) return; setTimeout(()=>{ const items = loadFeed().sort((a,b)=>a.ts-b.ts); const last = items[items.length-1]; if(last){ last.photo = pendingPhotoDataUrl; saveFeed(items); renderFeed(); } pendingPhotoDataUrl = null; photoInput.value = ''; }, 50); }, true);
+
+      /* Backup/export/import (JSON + CSV) */
+      const exportBtn = el('exportFeed'); const importInp = el('importFeed'); const backupMsg = el('backupMsg');
+      exportBtn.addEventListener('click', ()=>{ const data = JSON.stringify(loadFeed(), null, 2); const blob = new Blob([data], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'kpk_emergency_feed_backup.json'; a.click(); URL.revokeObjectURL(url); backupMsg.textContent = 'Exported feed to JSON.'; });
+      importInp.addEventListener('change', ()=>{ const f = importInp.files?.[0]; if(!f) return; const reader = new FileReader(); reader.onload = ()=>{ try{ const arr = JSON.parse(reader.result); if(Array.isArray(arr)){ saveFeed(arr); renderFeed(); backupMsg.textContent = 'Feed imported successfully.'; } else { backupMsg.textContent = 'Invalid file.'; } }catch{ backupMsg.textContent = 'Import failed.'; } importInp.value=''; }; reader.readAsText(f); });
+
+      // CSV export
+      const exportCsvBtn = el('exportCsv');
+      exportCsvBtn.addEventListener('click', ()=>{
+        const arr = loadFeed();
+        if(!arr.length){ backupMsg.textContent = 'No data to export.'; return; }
+        const header = ['ts','district','type','severity','desc','lat','lng'];
+        const rows = arr.map(a => [a.ts, a.district, a.type, a.severity, (a.desc||'').replace(/\n/g,' '), a.coords?.lat||'', a.coords?.lng||'']);
+        const csv = [header.join(','), ...rows.map(r=> r.map(cell => `"${String(cell).replace(/"/g,'""')}"`).join(','))].join('\n');
+        const blob = new Blob([csv], {type:'text/csv'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href=url; a.download='kpk_emergency_feed.csv'; a.click(); URL.revokeObjectURL(url); backupMsg.textContent='Exported CSV.'; });
+    })();
+
+    /* =========================
+       SOS Tools (torch, siren, blink)
+       ========================= */
+    let torchStream=null, torchTrack=null, torchOn=false; const torchInfo=document.createElement('div');
+    (function injectSosCard(){
+      const c = document.createElement('section'); c.className='card';
+      c.innerHTML = `<h2>🆘 SOS Tools (Quick)</h2>
+        <div class=row>
+          <button id=torchBtn class=secondary>🔦 Flashlight</button>
+          <button id=sirenBtn class=secondary>📢 Siren</button>
+          <button id=blinkBtn class=secondary>✨ Screen Blink</button>
+          <button id=panicBtn class=secondary>🚨 Panic (call 1122)</button>
+        </div>
+        <div class=mini id=torchInfoNode></div>`;
+      document.getElementById('app').insertBefore(c, document.querySelector('#app section.card[aria-labelledby="info"]'));
+      document.getElementById('torchInfoNode').appendChild(torchInfo);
+      document.getElementById('torchBtn').addEventListener('click', toggleFlashlight);
+      document.getElementById('sirenBtn').addEventListener('click', toggleSiren);
+      document.getElementById('blinkBtn').addEventListener('click', ()=>{ toggleBlink(); });
+      document.getElementById('panicBtn').addEventListener('click', (e)=>{ e.preventDefault(); panicAction(); });
+      document.getElementById('panicBtnBig').addEventListener('click', (e)=>{ e.preventDefault(); panicAction(); });
+    })();
+
+    async function toggleFlashlight(){
+      try{
+        if(!torchOn){
+          torchStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: {ideal:'environment'} } });
+          torchTrack = torchStream.getVideoTracks()[0];
+          const caps = torchTrack.getCapabilities?.();
+          if(caps && 'torch' in caps){ await torchTrack.applyConstraints({ advanced: [{ torch: true }] }); torchOn=true; torchInfo.textContent='Flashlight ON'; }
+          else{ torchInfo.textContent='Torch not supported on this device.'; torchTrack.stop(); }
+        }else{
+          await torchTrack.applyConstraints({ advanced: [{ torch: false }] }); torchTrack.stop(); torchOn=false; torchInfo.textContent='Flashlight OFF';
+        }
+      }catch(e){ torchInfo.textContent = 'Flashlight error: '+ e.message; }
+    }
+
+    // WebAudio siren (wail) with graceful fade
+    let ac=null, gain=null, oscA=null, oscB=null, sirenOn=false, sirenTimer=null;
+    function startWail(){
+      ac = new (window.AudioContext||window.webkitAudioContext)();
+      gain = ac.createGain(); gain.gain.value = 0.0001; gain.connect(ac.destination);
+      oscA = ac.createOscillator(); oscB = ac.createOscillator();
+      oscA.type='sine'; oscB.type='sine'; oscA.connect(gain); oscB.connect(gain);
+      oscA.start(); oscB.start();
+      const attack=0.5; gain.gain.exponentialRampToValueAtTime(0.2, ac.currentTime+attack);
+      let up=true; sirenTimer = setInterval(()=>{
+        const f1 = up? 900: 400; const f2 = up? 1200: 600; up=!up;
+        try{ oscA.frequency.setTargetAtTime(f1, ac.currentTime, 0.2); oscB.frequency.setTargetAtTime(f2, ac.currentTime, 0.2); }catch(e){}
+      }, 600);
+    }
+    function stopWail(){ try{ clearInterval(sirenTimer); sirenTimer=null; gain && (gain.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime+0.3)); setTimeout(()=>{ oscA?.stop?.(); oscB?.stop?.(); ac?.close?.(); }, 400); }catch{} }
+
+    function toggleSiren(){ if(!sirenOn){ try{ startWail(); }catch{ el('sirenSound').play(); } sirenOn=true; document.querySelector('#app button#sirenBtn').textContent='⛔ Stop Siren'; }
+      else { try{ stopWail(); }catch{} el('sirenSound').pause(); sirenOn=false; document.querySelector('#app button#sirenBtn').textContent='📢 Siren'; } }
+
+    let blinkId=null; function toggleBlink(){ const btn = document.querySelector('#app button#blinkBtn'); if(blinkId){ clearInterval(blinkId); blinkId=null; document.body.style.filter=''; btn.textContent='✨ Screen Blink'; return; } blinkId = setInterval(()=>{ document.body.style.filter = document.body.style.filter? '':'invert(1) contrast(1.5)'; }, 400); btn.textContent='⛔ Stop Blink'; }
+
+    /* Notifications */
+    (function initNotifs(){
+      const node = document.createElement('section'); node.className='card';
+      node.innerHTML = `<h2>🔔 Notifications</h2><div class=row><button id=notifToggle class=secondary>Enable Notifications</button></div>`;
+      document.getElementById('app').appendChild(node);
+      document.getElementById('notifToggle').addEventListener('click', async ()=>{
+        if(Notification.permission !== "granted"){ await Notification.requestPermission(); }
+        if(Notification.permission === "granted"){ new Notification("KPK Flood Hub", { body: "Notifications enabled for safety alerts." }); showToast("Notifications enabled."); }
+        else alert("Notifications permission not granted.");
+      });
+    })();
+
+    /* Safety Checklist */
+    (function initChecklist(){
+      const node = document.createElement('section'); node.className='card';
+      node.innerHTML = `<h2>✅ Safety Checklist</h2><div id=checklist></div>`;
+      document.getElementById('app').appendChild(node);
+      const checklist = ["💧 Clean drinking water","🥫 Canned food & dry snacks","💊 First aid kit","🔦 Flashlight / Torch","🔋 Power bank & extra batteries","📻 Battery radio","🪪 CNIC & important documents"];
+      const checklistDiv = document.getElementById('checklist');
+      checklist.forEach(item=>{ const lbl = document.createElement('label'); lbl.innerHTML = `<input type=checkbox> ${item}`; checklistDiv.appendChild(lbl); checklistDiv.appendChild(document.createElement('br')); });
+    })();
+
+    /* Donation logic (improved) */
+    (function initDonation(){
+      const data = Object.assign({ title: "Al Khidmat Foundation", bank: "Meezan Bank", acc: "01234567890123", iban: "PK12MEZN00001234567890123" }, window.DONATION || {});
+      const $ = id => document.getElementById(id);
+      if($('accTitle')) $('accTitle').textContent = data.title; if($('accBank')) $('accBank').textContent = data.bank; if($('accNo')) $('accNo').textContent = data.acc; if($('accIBAN')) $('accIBAN').textContent = data.iban;
+      const copyBtn = $('copyAcc'); const shareBtn = $('shareAcc'); const msg = $('accMsg');
+      function say(t){ msg.textContent = t; clearTimeout(say._t); say._t=setTimeout(()=>msg.textContent='', 2500); }
+      copyBtn?.addEventListener('click', async ()=>{ try{ const txt = `Al Khidmat Flood Relief\nBank: ${data.bank}\nAccount: ${data.acc}\nIBAN: ${data.iban}`; await navigator.clipboard.writeText(txt); say('✅ Account details copied'); }catch(e){ say('❌ Copy failed'); } });
+      shareBtn?.addEventListener('click', async ()=>{ const shareText = `Donate to Al Khidmat (Flood Relief)\nBank: ${data.bank}\nAccount: ${data.acc}\nIBAN: ${data.iban}`; if(navigator.share){ try{ await navigator.share({title:'Flood Relief Donation', text:shareText}); } catch(e){} } else { const wa = `https://wa.me/?text=${encodeURIComponent(shareText)}`; window.open(wa, '_blank', 'noopener'); } });
+    })();
+
+    /* Rain Forecast Chart */
+    let rainChart = null;
+    function drawChart(labels, data){ const ctx = document.getElementById('rainChart'); if(!ctx) return; if(rainChart){ rainChart.destroy(); } rainChart = new Chart(ctx,{ type:'bar', data:{labels,datasets:[{label:'mm',data}]}, options:{scales:{y:{beginAtZero:true}}} }); }
+    async function fetchRainDay(lat,lng){ try{ const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=precipitation&forecast_days=1&timezone=auto`; const r = await fetch(url); const j = await r.json(); if(!j.hourly) throw new Error('No data'); return { times: j.hourly.time.slice(0,24), prec: j.hourly.precipitation.slice(0,24) }; }catch(e){ console.warn('Rain fetch failed', e); return null; } }
+    async function refreshRainForecast(lat,lng,label='Location'){ el('forecastInfo').textContent = 'Loading rain forecast…'; const data = await fetchRainDay(lat,lng); if(!data){ el('forecastInfo').textContent = 'Rain forecast unavailable.'; return; } const lbls = data.times.map(t=> new Date(t).getHours()+':00'); drawChart(lbls, data.prec); el('forecastInfo').textContent = `24-hour precipitation (mm) for ${label}`; }
+
+    // lightweight preview
+    async function refreshSmallRainPreview(lat,lng){
+      try{
+        const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=precipitation_probability&forecast_days=1&timezone=auto`);
+        return r.json();
+      }catch(e){}
+    }
+
+    /* ===========================================================
+       Leaflet Map + Evacuation markers + Radar
+       ============================================================ */
+    let map, radarLayer, evacMarkers = [], incidentMarkers = [];
+    function initMap(){
+      try{
+        map = L.map('map',{ zoomControl:true, attributionControl:false }).setView([34.0,71.5], 7);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+        radarLayer = L.tileLayer(window.RAINVIEWER_LAYER || 'https://tilecache.rainviewer.com/v2/radar/nowcast_0/512/{z}/{x}/{y}/1/1_1.png', {opacity:0.7}).addTo(map);
+      }catch(e){ console.warn('Map init failed', e); }
+    }
+    function panTo(lat,lng){ if(map) map.setView([lat,lng], 9); }
+
+    document.getElementById('radarOpacity').addEventListener('input', (e)=>{
+      const v = e.target.value / 100;
+      if(radarLayer) radarLayer.setOpacity(v);
+    });
+    document.getElementById('refreshRadar').addEventListener('click', ()=>{
+      if(!radarLayer) return;
+      const now = Date.now();
+      const urlTemplate = (window.RAINVIEWER_LAYER || 'https://tilecache.rainviewer.com/v2/radar/nowcast_0/512/{z}/{x}/{y}/1/1_1.png') + '?_t=' + now;
+      radarLayer.setUrl(urlTemplate);
+      showToast('Radar refreshed');
+    });
+
+    // Evacuation centers UI
+    function renderEvacList(filterDistrict){
+      const arr = JSON.parse(localStorage.getItem(EVAC_KEY) || '[]');
+      const out = arr.filter(e => !filterDistrict || e.district === filterDistrict);
+      const container = el('evacList');
+      container.innerHTML = out.map(ev => `<div style="padding:8px;border-bottom:1px solid #eef">${ev.name} <div class="muted">${ev.district} • ${ev.notes||''} <a class="map-link" href="https://maps.google.com/?q=${ev.lat},${ev.lng}" target="_blank">Open</a></div></div>`).join('') || '<div class="muted">No evacuation centers available for this district.</div>';
+      // render markers
+      refreshEvacMarkers(out);
+    }
+
+    function refreshEvacMarkers(list){
+      // remove previous
+      evacMarkers.forEach(m => map.removeLayer(m)); evacMarkers = [];
+      if(!map) return;
+      list.forEach(ev => {
+        try{
+          const m = L.marker([ev.lat, ev.lng]).addTo(map).bindPopup(`<b>${ev.name}</b><br>${ev.district}<br>${ev.notes||''}`);
+          evacMarkers.push(m);
+        }catch(e){}
+      });
+    }
+
+    // incident markers (recent feed)
+    function refreshIncidentMarkers(){
+      incidentMarkers.forEach(m => map.removeLayer(m)); incidentMarkers = [];
+      const items = loadFeed();
+      items.slice(-40).forEach(it=>{
+        if(it.coords){
+          try{
+            const m = L.circleMarker([it.coords.lat, it.coords.lng], {radius:6, color: it.severity==='Critical'?'#7f1d1d': it.severity==='High'?'#f59e0b':'#10b981'}).addTo(map).bindPopup(`<b>${it.type}</b><br>${it.district}<br>${it.desc||''}`);
+            incidentMarkers.push(m);
+          }catch(e){}
+        }
+      });
+    }
+
+    document.getElementById('copyMapLink').addEventListener('click', async ()=>{
+      if(!lastCoords) return alert('Get location first');
+      const short = `https://maps.google.com/?q=${lastCoords.latitude},${lastCoords.longitude}`;
+      try{ await navigator.clipboard.writeText(short); showToast('Map link copied'); }catch{ alert('Copy failed'); }
+    });
+
+    /* OpenWeatherMap Current + Alerts (keeps your existing behavior) */
+    const alertBanner = el('alertBanner');
+    function showAlertBanner(text, critical=false){ alertBanner.textContent=text; alertBanner.hidden=false; alertBanner.classList.toggle('critical', !!critical); }
+    function hideAlertBanner(){ alertBanner.hidden=true; }
+
+    async function loadOWMCurrent(lat,lng,label){
+      if(!OWM_KEY || OWM_KEY === 'YOUR_OPENWEATHERMAP_KEY_HERE'){ return; }
+      try{
+        const url = `https://api.openweathermap.org/data/2.5/onecall?lat=${lat}&lon=${lng}&appid=${OWM_KEY}&units=metric`;
+        const r = await fetch(url); const j = await r.json();
+        if(j.alerts && j.alerts.length){ const a=j.alerts[0]; const head = a.event || 'Weather alert'; const body = (a.description||'').split('\n').slice(0,3).join(' '); showAlertBanner(`⚠️ ${head}: ${body}`, true); if(Notification?.permission==='granted'){ new Notification(head, { body }); } }
+        else { hideAlertBanner(); }
+      }catch(e){ console.warn('OWM error', e); }
+    }
+
+    /* Panic button (big) */
+    function panicAction(){
+      try{ if(navigator.vibrate) navigator.vibrate([300,100,300,100,600]); }catch{}
+      toggleSiren();
+      toggleBlink();
+      const ok = confirm('Emergency action triggered. Do you want to CALL Rescue 1122 now?');
+      if(ok){ window.location.href = 'tel:1122'; }
+    }
+
+    // small helpers & init
+    function fmtCoords(c){ if(!c) return '—'; return `${c.latitude?.toFixed(6)||c.lat?.toFixed(6)}, ${c.longitude?.toFixed(6)||c.lng?.toFixed(6)}`; }
+
+    /* =========================
+       Evacuation centers seed + rendering on load
+       ========================= */
+    function seedEvacIfNeeded(){
+      if(!localStorage.getItem(EVAC_KEY)){ const defaultEvac = [
+        { name:'Peshawar Model School (Evac Center)', lat:34.005, lng:71.545, district:'Peshawar', notes:'Open ground, capacity approx 200' },
+        { name:'Mingora Sports Complex Shelter', lat:34.774, lng:72.36, district:'Swat', notes:'Indoor hall' },
+        { name:'DI Khan Civic Center', lat:31.836, lng:70.90, district:'Dera Ismail Khan', notes:'Community hall' }
+      ]; localStorage.setItem(EVAC_KEY, JSON.stringify(defaultEvac)); }
+    }
+
+    /* =========================
+       Settings & preferences
+       ========================= */
+    el('darkToggle').addEventListener('change', (e)=>{ document.documentElement.classList.toggle('dark', e.target.checked); });
+    el('autoFlush').addEventListener('change', (e)=>{ el('autoFlushStatus').textContent = e.target.checked ? 'ON' : 'OFF'; });
+    el('autoSos').addEventListener('change', (e)=>{ el('autoSosStatus').textContent = e.target.checked ? 'ON' : 'OFF'; });
+
+    // notif toggle handled earlier
+
+    /* =========================
+       Evac list + map refresh on load
+       ========================= */
+    window.addEventListener('load', ()=>{
+      try{ initMap(); }catch(e){ console.warn('Map init failed:', e); }
+      try{ initDistricts(); }catch(e){ console.warn('Districts init failed:', e); }
+      seedEvacIfNeeded();
+      renderEvacList(dqSelect.value);
+      renderFeed();
+      refreshIncidentMarkers();
+      updateNetStatus();
+      updateBatteryUI();
+      // attempt to flush outbox if online on load
+      if(isOnline()) tryFlushOutbox();
+      // periodic background forecast check (every 8 minutes) - can be adjusted
+      setInterval(async ()=>{
+        const d = findDistrictByName(dqSelect.value);
+        if(d?.center){ await refreshRainForecast(d.center.lat, d.center.lng, d.name); const res = await fetchSmallRisk(d.center.lat, d.center.lng); if(res?.level==='critical'){ showToast('High flood risk detected for selected district'); if(Notification.permission==='granted') new Notification('Flood Alert', {body:`High flood risk for ${d.name}`}); } }
+      }, 8*60*1000);
+    });
+
+    // helper to compute small risk (used by interval)
+    async function fetchSmallRisk(lat,lng){
+      try{
+        const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=precipitation_probability&forecast_days=1&timezone=auto`);
+        const j = await r.json(); const probs = (j.hourly?.precipitation_probability||[]).slice(0,6); const avg = Math.round((probs.reduce((a,b)=>a+b,0)/Math.max(1,probs.length))); const nearR = nearestRiver(lat,lng); const sc = riskScore(nearR.km, avg); return { level: riskLevelFromScore(sc), avgProb:avg, nearR }; }catch(e){ return null; }
+    }
+
+    /* =========================
+       Search bindings & init event listeners (wiring original handlers)
+       ========================= */
+    dqSelect.addEventListener('change', updateFromSelect);
+    dqSearch.addEventListener('input', (e)=> searchFilter(e.target.value));
+
+    el('dqUseGPS').addEventListener('click', ()=>{
+      if(!('geolocation' in navigator)) return alert('Geolocation not supported.');
+      navigator.geolocation.getCurrentPosition(pos=>{
+        const { latitude, longitude } = pos.coords;
+        const near = nearestDistrict(latitude, longitude);
+        dqSelect.value = near.district.name; updateFromSelect();
+        if(reportDistrictSelect) reportDistrictSelect.value = near.district.name;
+      }, err=> alert('Location error: '+err.message), { enableHighAccuracy:true, timeout:15000, maximumAge:0 });
+    });
+
+    /* =========================
+       Simple keyboard shortcuts for power users
+       ========================= */
+    window.addEventListener('keydown', (e)=>{
+      // Alt+G -> get location, Alt+S -> start tracking, Alt+P -> panic
+      if(e.altKey && e.key.toLowerCase()==='g'){ e.preventDefault(); locBtn.click(); }
+      if(e.altKey && e.key.toLowerCase()==='s'){ e.preventDefault(); startWatchBtn.click(); }
+      if(e.altKey && e.key.toLowerCase()==='p'){ e.preventDefault(); panicAction(); }
+    });
+
+    /* ------------- Load extra libraries dynamically (leaflet.heat + jsPDF) ------------- */
+(function loadExtraLibs(){
+  // leaflet.heat (simple heatmap plugin)
+  const heatUrl = 'https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js';
+  const jsPdfUrl = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+  function addScript(src, onload){
+    if(document.querySelector(`script[src="${src}"]`)) { if(onload) onload(); return; }
+    const s = document.createElement('script'); s.src = src; s.defer = true;
+    s.onload = onload; document.head.appendChild(s);
+  }
+  addScript(heatUrl, ()=>console.log('leaflet.heat loaded'));
+  addScript(jsPdfUrl, ()=>console.log('jsPDF loaded'));
+})();
+
+/* =============================
+   Internationalization (en/ur/ps)
+   Simple dictionary + toggle
+   ============================= */
+const I18N = {
+  en: {
+    priorityHotlines: '🚨 Priority Hotlines (Khyber Pakhtunkhwa & Pakistan)',
+    useGPS: 'Use my GPS',
+    shareLocation: 'Share Your Live Location',
+    reportIncident: 'Report an Incident',
+    liveFeed: 'Live Community Incident Feed',
+    advanced: 'Advanced Flood Tools',
+    evacCenters: 'Evacuation Centers & Resources',
+    analytics: '📊 Analytics'
+  },
+  ur: {
+    priorityHotlines: '🚨 اہم ہاٹ لائنز (خیبر پختونخوا اور پاکستان)',
+    useGPS: 'میرا GPS استعمال کریں',
+    shareLocation: 'اپنا مقام شیئر کریں',
+    reportIncident: 'واقعہ رپورٹ کریں',
+    liveFeed: 'براہِ راست کمیونٹی فیڈ',
+    advanced: 'اعلی درجے کے سیلاب کے ذرائع',
+    evacCenters: 'بحالی مراکز اور وسائل',
+    analytics: '📊 تجزیاتی معلومات'
+  },
+  ps: {
+    priorityHotlines: '🚨 روغتیایي ګرځنده مرکزي کرښې (خیبر پختونخوا او پاکستان)',
+    useGPS: 'زما GPS وکاروئ',
+    shareLocation: 'خپله ژوندي سیمه شریکه کړئ',
+    reportIncident: 'پیښه راپور کړئ',
+    liveFeed: 'ژوندۍ ټولنه فیډ',
+    advanced: 'پرمختللي سیلابي وسیلې',
+    evacCenters: 'استوګنې مرکزونه او سرچینې',
+    analytics: '📊 تحلیلات'
+  }
+};
+
+let currentLang = localStorage.getItem('kpk_lang') || 'en';
+function t(k){
+  return (I18N[currentLang] && I18N[currentLang][k]) || I18N.en[k] || '';
+}
+
+// inject a small language selector into header
+(function injectLangToggle(){
+  const container = document.querySelector('header .wrap');
+  if(!container) return;
+  const sel = document.createElement('select');
+  sel.id = 'langSelect'; sel.title = 'Language';
+  sel.style.marginLeft = '12px';
+  sel.innerHTML = `<option value="en">EN</option><option value="ur">اردو</option><option value="ps">پښتو</option>`;
+  sel.value = currentLang;
+  sel.addEventListener('change', (e)=>{ currentLang = e.target.value; localStorage.setItem('kpk_lang', currentLang); applyTranslations(); });
+  container.appendChild(sel);
+  applyTranslations();
+})();
+function applyTranslations(){
+  try{
+    document.getElementById('hotlines').textContent = t('priorityHotlines');
+    document.getElementById('dq').textContent = '📞 '+ (t('useGPS') || 'District Quick-Call (KPK)');
+    document.getElementById('location').textContent = '📍 '+t('shareLocation');
+    document.getElementById('report').textContent = '📝 '+t('reportIncident');
+    document.getElementById('live').textContent = '📡 '+t('liveFeed');
+    document.getElementById('adv').textContent = '🧭 '+t('advanced');
+    document.getElementById('evac').textContent = '🏚️ '+t('evacCenters');
+    // analytics panel label created below
+  }catch(e){ console.warn('applyTranslations failed', e); }
+}
+
+/* =============================
+   Analytics Panel - shows metrics
+   (counts by district, severity, last X hours)
+   ============================= */
+(function injectAnalyticsPanel(){
+  const panel = document.createElement('section');
+  panel.className = 'card';
+  panel.id = 'analyticsPanel';
+  panel.innerHTML = `
+    <h2 id="analyticsHeader">${t('analytics')}</h2>
+    <div class="mini">Real-time metrics from local feed (client-only).</div>
+    <div style="display:flex;gap:10px;margin-top:8px;flex-wrap:wrap">
+      <div class="soft" style="min-width:160px"><b>Total reports</b><div id="an_total" class="muted">—</div></div>
+      <div class="soft" style="min-width:160px"><b>Critical</b><div id="an_critical" class="muted">—</div></div>
+      <div class="soft" style="min-width:160px"><b>Last 24h</b><div id="an_24h" class="muted">—</div></div>
+      <div class="soft" style="min-width:160px"><b>Top District</b><div id="an_top" class="muted">—</div></div>
+    </div>
+    <div style="margin-top:8px">
+      <button id="an_export_pdf" class="secondary">Export Metrics as PDF</button>
+      <button id="an_refresh" class="secondary">Refresh Analytics</button>
+    </div>
+  `;
+  // place analytics near donation card (after donate)
+  const donateCard = document.querySelector('section.card[aria-labelledby="donate"]');
+  if(donateCard && donateCard.parentNode){
+    donateCard.parentNode.insertBefore(panel, donateCard.nextSibling);
+  } else {
+    document.getElementById('app').appendChild(panel);
+  }
+
+  function computeAnalytics(){
+    const items = loadFeed();
+    const total = items.length;
+    const critical = items.filter(i=> (i.severity||'').toLowerCase()==='critical').length;
+    const last24 = items.filter(i => (Date.now() - i.ts) <= (24*60*60*1000)).length;
+    // find top district
+    const counts = {};
+    items.forEach(it => { counts[it.district] = (counts[it.district]||0)+1; });
+    const top = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+    document.getElementById('an_total').textContent = total;
+    document.getElementById('an_critical').textContent = critical;
+    document.getElementById('an_24h').textContent = last24;
+    document.getElementById('an_top').textContent = top ? `${top[0]} (${top[1]})` : '—';
+    return { total, critical, last24, top: top?top[0]:null };
+  }
+
+  document.getElementById('an_refresh').addEventListener('click', ()=>{ computeAnalytics(); showToast('Analytics refreshed'); });
+  document.getElementById('an_export_pdf').addEventListener('click', async ()=>{
+    const metrics = computeAnalytics();
+    // try to use jsPDF if loaded
+    try{
+      const { jsPDF } = window.jspdf || window.jspdf || {};
+      if(!jsPDF){ alert('PDF library not loaded yet. Try again or ensure network access.'); return; }
+      const doc = new jsPDF();
+      doc.setFontSize(14);
+      doc.text('KPK Flood Hub - Local Metrics', 14, 18);
+      doc.setFontSize(11);
+      doc.text(`Total reports: ${metrics.total}`, 14, 30);
+      doc.text(`Critical: ${metrics.critical}`, 14, 38);
+      doc.text(`Last 24h: ${metrics.last24}`, 14, 46);
+      doc.text(`Top district: ${metrics.top || '—'}`, 14, 54);
+      const dataUrl = doc.output('datauristring');
+      // download
+      const a = document.createElement('a'); a.href = dataUrl; a.download = `kpk_metrics_${Date.now()}.pdf`; a.click();
+    }catch(e){ console.warn('PDF export failed', e); alert('PDF export failed'); }
+  });
+
+  // initial compute
+  computeAnalytics();
+
+  // recalc when feed changes
+  window.addEventListener('storage', (e)=>{ if(e.key === FEED_KEY) computeAnalytics(); });
+})();
+
+/* =============================
+   Heatmap of incidents (leaflet.heat)
+   - toggled by user via a small control
+   ============================= */
+(function heatmapModule(){
+  let heatLayer = null;
+  const control = document.createElement('div');
+  control.style.marginTop = '8px';
+  control.innerHTML = `<label class="mini"><input type="checkbox" id="heatToggle"> Show Incident Heatmap</label>`;
+  // place control near map legend
+  const mapLegend = document.getElementById('mapLegend');
+  if(mapLegend) mapLegend.appendChild(control);
+
+  document.getElementById('heatToggle').addEventListener('change', async (e)=>{
+    const checked = e.target.checked;
+    if(checked){
+      // ensure leaflet.heat loaded
+      if(!L.heatLayer && !window.heatLayerPolyfill){
+        // wait until script loads (max 4s)
+        let waited = 0;
+        while(typeof L.heatLayer === 'undefined' && waited < 4000){
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise(r=>setTimeout(r, 200));
+          waited += 200;
+        }
+      }
+      // build points
+      const points = loadFeed().filter(i=>i.coords).map(i=>[i.coords.lat, i.coords.lng, 0.5 + (i.severity==='Critical'?1.2:(i.severity==='High'?0.9:0.4))]);
+      if(!points.length){ showToast('No geo-referenced incidents to display'); e.target.checked=false; return; }
+      try{
+        heatLayer = L.heatLayer(points, {radius: 20, blur: 25, maxZoom: 13}).addTo(map);
+      }catch(err){ console.warn('heat add failed', err); alert('Heatmap not available'); e.target.checked=false; }
+    } else {
+      if(heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+    }
+  });
+})();
+
+/* =============================
+   Evacuation center manager (Add/Edit/Delete)
+   Adds a simple UI for admin users to manage centers (client-only)
+   ============================= */
+(function evacManager(){
+  const mgr = document.createElement('section'); mgr.className='card'; mgr.innerHTML = `
+    <h2>🗺️ Evacuation Center Manager</h2>
+    <div class="mini">Add/edit evacuation centers (stored locally).</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+      <input id="ev_name" placeholder="Name" style="flex:2;padding:8px;border-radius:8px">
+      <input id="ev_district" placeholder="District" style="flex:1;padding:8px;border-radius:8px">
+      <input id="ev_lat" placeholder="Lat" style="flex:1;padding:8px;border-radius:8px">
+      <input id="ev_lng" placeholder="Lng" style="flex:1;padding:8px;border-radius:8px">
+      <button id="ev_add" class="secondary">Add Center</button>
+    </div>
+    <div class="mini" id="ev_msg" style="margin-top:8px"></div>
+    <div id="ev_table" style="margin-top:10px"></div>
+  `;
+  // insert before analytics or at bottom
+  const analytics = document.getElementById('analyticsPanel');
+  if(analytics) analytics.parentNode.insertBefore(mgr, analytics.nextSibling);
+  else document.getElementById('app').appendChild(mgr);
+
+  const evName = document.getElementById('ev_name');
+  const evDistrict = document.getElementById('ev_district');
+  const evLat = document.getElementById('ev_lat');
+  const evLng = document.getElementById('ev_lng');
+  const evAdd = document.getElementById('ev_add');
+  const evMsg = document.getElementById('ev_msg');
+  const evTable = document.getElementById('ev_table');
+
+  function loadEvac(){ return JSON.parse(localStorage.getItem(EVAC_KEY) || '[]'); }
+  function saveEvac(arr){ localStorage.setItem(EVAC_KEY, JSON.stringify(arr)); renderEvacList(dqSelect.value); refreshEvacMarkers(arr.filter(Boolean)); renderTable(); }
+
+  function renderTable(){
+    const arr = loadEvac();
+    if(!arr.length){ evTable.innerHTML = '<div class="muted">No centers defined.</div>'; return; }
+    evTable.innerHTML = arr.map((e,i)=>`<div style="padding:8px;border-bottom:1px solid #eef"><b>${e.name}</b> <span class="muted">(${e.district})</span><div class="mini">${e.notes||''}</div><div style="margin-top:6px"><button data-i="${i}" class="ev_edit secondary">Edit</button> <button data-i="${i}" class="ev_del secondary">Delete</button></div></div>`).join('');
+    evTable.querySelectorAll('.ev_del').forEach(b=>b.addEventListener('click', (ev)=>{
+      const idx = +ev.currentTarget.dataset.i; if(!confirm('Delete this center?')) return; const arr = loadEvac(); arr.splice(idx,1); saveEvac(arr); showToast('Center deleted');
+    }));
+    evTable.querySelectorAll('.ev_edit').forEach(b=>b.addEventListener('click', (ev)=>{
+      const idx = +ev.currentTarget.dataset.i; const arr = loadEvac(); const data = arr[idx];
+      evName.value = data.name; evDistrict.value = data.district; evLat.value = data.lat; evLng.value = data.lng;
+      evMsg.textContent = 'Edit values then click "Add Center" to save (it will append as new). To replace, delete the old one first.';
+    }));
+  }
+
+  evAdd.addEventListener('click', ()=>{
+    const name = evName.value.trim(); const district = evDistrict.value.trim() || 'Other';
+    const lat = parseFloat(evLat.value); const lng = parseFloat(evLng.value);
+    if(!name || isNaN(lat) || isNaN(lng)){ evMsg.textContent = 'Please provide valid name and numeric lat/lng.'; return; }
+    const arr = loadEvac();
+    arr.push({ name, district, lat, lng, notes: 'Added by user' });
+    saveEvac(arr);
+    evMsg.textContent = 'Center added.'; evName.value=''; evDistrict.value=''; evLat.value=''; evLng.value='';
+    setTimeout(()=>evMsg.textContent='', 3000);
+  });
+
+  renderTable();
+})();
+
+/* =============================
+   Scheduled auto-backup (download JSON every X minutes)
+   Useful for preserving client data offline
+   ============================= */
+(function autoBackupScheduler(){
+  const periodMin = parseInt(localStorage.getItem('kpk_backup_min') || '120', 10); // default every 120 min
+  // small control in footer
+  const footer = document.querySelector('.footer');
+  if(footer){
+    const btn = document.createElement('button'); btn.className='secondary'; btn.style.marginLeft='10px'; btn.textContent='Immediate Backup';
+    btn.addEventListener('click', ()=>{ const data = JSON.stringify(loadFeed(), null, 2); const blob = new Blob([data], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'kpk_backup_'+Date.now()+'.json'; a.click(); URL.revokeObjectURL(url); showToast('Backup downloaded'); });
+    footer.appendChild(btn);
+  }
+  // schedule automatic backups (download only if user accepts - here we create a blob and auto-download)
+  setInterval(()=>{ try{ const data = JSON.stringify(loadFeed(), null, 2); const blob = new Blob([data], {type:'application/json'}); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = 'kpk_autobackup_'+Date.now()+'.json'; a.click(); URL.revokeObjectURL(url); console.log('Auto backup created'); }catch(e){ console.warn('Auto backup failed', e); } }, Math.max(5, periodMin) * 60 * 1000);
+})();
+
+/* =============================
+   Geofencing Alerts - user can draw a circle around current district center,
+   app will notify if user (or tracked position) enters & risk is high.
+   ============================= */
+(function geofenceModule(){
+  const container = document.createElement('div');
+  container.style.marginTop = '8px';
+  container.innerHTML = `<label class="mini"><input type="checkbox" id="gfEnable"> Enable geofence alerts (centered on selected district)</label> <button id="gfSet" class="secondary">Set Now</button> <span id="gfInfo" class="mini" style="margin-left:8px">—</span>`;
+  const advCard = document.querySelector('section.card[aria-labelledby="adv"]');
+  if(advCard) advCard.appendChild(container);
+  let gfCircle = null;
+  let gfCenter = null;
+  const gfInfo = document.getElementById('gfInfo');
+  document.getElementById('gfSet').addEventListener('click', ()=>{
+    const d = findDistrictByName(dqSelect.value);
+    if(!d?.center){ alert('No center for district'); return; }
+    gfCenter = d.center;
+    const radiusKm = 10; // default fence 10km
+    if(gfCircle && map) map.removeLayer(gfCircle);
+    gfCircle = L.circle([gfCenter.lat, gfCenter.lng], { radius: radiusKm*1000, color: '#f59e0b', fillOpacity: 0.06 }).addTo(map);
+    gfInfo.textContent = `Fence: ${d.name} • ${radiusKm} km`;
+    showToast('Geofence set for ' + d.name);
+  });
+  // check periodically if lastCoords inside
+  setInterval(()=>{
+    if(!document.getElementById('gfEnable').checked) return;
+    if(!gfCenter || !lastCoords) return;
+    const km = haversine(lastCoords.latitude, lastCoords.longitude, gfCenter.lat, gfCenter.lng);
+    if(km < 10){ // alert user (only once per entry)
+      if(!gfInfo.dataset.notified){ gfInfo.dataset.notified = '1'; alert('You are inside the geofenced area: ' + dqSelect.value + '. Stay alert.'); }
+    } else { delete gfInfo.dataset.notified; }
+  }, 10_000);
+})();
+
+/* =============================
+   Accessibility & small UX improvements
+   - focus outlines, skip to main, ARIA updates
+   ============================= */
+(function a11yFixes(){
+  // add skip link
+  const skip = document.createElement('a'); skip.href='#app'; skip.textContent='Skip to main'; skip.className='mini'; skip.style.position='absolute'; skip.style.left='8px'; skip.style.top='8px'; skip.style.zIndex='999';
+  document.body.appendChild(skip);
+  // ensure feed uses proper role
+  const feed = document.getElementById('feed'); if(feed) feed.setAttribute('role','list');
+  // improve keyboard focus states via CSS injection (simple)
+  const style = document.createElement('style'); style.textContent = `:focus{outline:3px solid rgba(9,105,33,0.2);outline-offset:2px}`; document.head.appendChild(style);
+})();
+
+/* =============================
+   Wire up some reactive updates:
+   - When feed changes update analytics, heatmap & incident markers
+   ============================= */
+(function reactiveWiring(){
+  function onFeedUpdate(){
+    try{ // refresh analytics numbers
+      const evt = new Event('storage'); window.dispatchEvent(evt);
+    }catch(e){}
+    // update map markers & heat if active
+    refreshIncidentMarkers();
+    if(document.getElementById('heatToggle')?.checked){
+      // toggle off & on to refresh data
+      document.getElementById('heatToggle').checked = false;
+      document.getElementById('heatToggle').dispatchEvent(new Event('change'));
+      setTimeout(()=>{ document.getElementById('heatToggle').checked = true; document.getElementById('heatToggle').dispatchEvent(new Event('change')); }, 250);
+    }
+  }
+  // observe localStorage changes for FEED_KEY (already wired by storage event)
+  window.addEventListener('storage', (e)=>{ if(e.key === FEED_KEY) onFeedUpdate(); });
+
+  // also hook into functions that change feed in-page (monkey-patch saveFeed)
+  const origSave = saveFeed;
+  window.saveFeed = function(items){ origSave(items); try{ onFeedUpdate(); }catch(e){} };
+})();
+
+/* =============================
+   Final user message to console
+   ============================= */
+console.log('Extended features appended: i18n, analytics, heatmap, evac CRUD, geofence, auto-backup, PDF export, accessibility enhancements.');
+
+
+
+
+
+  </script>
+</body>
+</html>
